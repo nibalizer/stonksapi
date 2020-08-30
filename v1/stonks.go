@@ -37,8 +37,10 @@ func GetPreRonaPrice(finnhubClient *finnhub.DefaultApiService, auth context.Cont
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Printf("%+v\n", stockCandles)
-	//fmt.Printf("day1 close %5.2f, day10 close %5.2f\n", stockCandles.C[0], stockCandles.C[len(stockCandles.C)-1])
+	if len(stockCandles.C) == 0 {
+		log.Printf("%s is newer than rona, no PreRonaPrice calculated\n", symbol)
+		return 0.0
+	}
 	price = (stockCandles.C[0] + stockCandles.C[len(stockCandles.C)-1]) / 2
 	return price
 
