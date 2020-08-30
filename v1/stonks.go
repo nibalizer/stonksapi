@@ -57,11 +57,20 @@ func Quote(symbol string, preRona bool) (msg string, err error) {
 	if preRona {
 		preRonaPrice = GetPreRonaPrice(finnhubClient, auth, symbol)
 	}
-	//profile, _, err := finnhubClient.CompanyProfile2(auth, &finnhub.CompanyProfile2Opts{Symbol: optional.NewString(symbol)})
+	stonksDataPath := os.Getenv("STONKS_DATA_PATH")
+	if stonksDataPath == "" {
+		log.Fatal("Please set STONKS_DATA_PATH")
+	}
+
+	records, err := GetStonksDataFromCSV(stonksDataPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	desc, err := GetStonkDescription(records, symbol)
 	dailyChange := GetDailyChange(quote)
 	//log.Printf("%+v\n", profile)
 	if preRona {
-		msg = fmt.Sprintf("[%s] Price: %5.2f  // Today: %5.2f%% PreRonaPrice: %5.2f", symbol, quote.C, dailyChange, preRonaPrice)
+		msg = fmt.Sprintf("[%s] %s Price: %5.2f  // Today: %5.2f%% PreRonaPrice: %5.2f", symbol, desc, quote.C, dailyChange, preRonaPrice)
 	} else {
 		msg = fmt.Sprintf("[%s] Price: %5.2f  // Today: %5.2f%%", symbol, quote.C, dailyChange)
 	}
