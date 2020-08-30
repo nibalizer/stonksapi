@@ -14,6 +14,19 @@ import (
 	"strings"
 )
 
+type QuoteDetail struct {
+	Symbol             string
+	Price              float32
+	HighPrice          float32
+	LowPrice           float32
+	OpenPrice          float32
+	PreviousClosePrice float32
+	DailyChange        float32
+	PreRonaPrice       float32
+	Description        string
+	FormattedDetail    string
+}
+
 func GetPreRonaPrice(finnhubClient *finnhub.DefaultApiService, auth context.Context, symbol string) (price float32) {
 	var ronaSeconds int64
 	ronaSeconds = 1580882400 // feb 5
@@ -35,7 +48,7 @@ func GetDailyChange(quote finnhub.Quote) (percent float32) {
 	return percent
 }
 
-func Quote(symbol string, preRona bool, records [][]string) (msg string, err error) {
+func Quote(symbol string, preRona bool, records [][]string) (detail QuoteDetail, err error) {
 	finnhubClient := finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
 	auth := context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
 		Key: os.Getenv("FINNHUB_API_KEY"),
@@ -44,12 +57,13 @@ func Quote(symbol string, preRona bool, records [][]string) (msg string, err err
 	log.Printf("Looking up stock quote: %s\n", symbol)
 	quote, _, err := finnhubClient.Quote(auth, symbol)
 	if err != nil {
-		msg = "error?"
-		return msg, err
+		detail = QuoteDetail{FormattedDetail: "error?"}
+		return detail, err
 	}
 	if quote.Pc == 0 && quote.O == 0 {
-		msg = fmt.Sprintf("No data found for symbol %s\n", symbol)
-		return msg, errors.New(msg)
+		msg := fmt.Sprintf("No data found for symbol %s\n", symbol)
+		detail = QuoteDetail{FormattedDetail: msg}
+		return detail, errors.New(msg)
 	}
 
 	log.Printf("%+v\n", quote)
@@ -61,14 +75,27 @@ func Quote(symbol string, preRona bool, records [][]string) (msg string, err err
 	desc, err := GetStonkDescription(records, symbol)
 	dailyChange := GetDailyChange(quote)
 	//log.Printf("%+v\n", profile)
+	var msg string
 	if preRona {
 		msg = fmt.Sprintf("[%s] %s Price: %5.2f  // Today: %5.2f%% PreRonaPrice: %5.2f", symbol, desc, quote.C, dailyChange, preRonaPrice)
 	} else {
 		msg = fmt.Sprintf("[%s] Price: %5.2f  // Today: %5.2f%%", symbol, quote.C, dailyChange)
 	}
 	log.Printf("%+v\n", msg)
+	detail = QuoteDetail{
+		Symbol:             symbol,
+		Price:              quote.C,
+		HighPrice:          quote.H,
+		LowPrice:           quote.L,
+		OpenPrice:          quote.O,
+		PreviousClosePrice: quote.Pc,
+		DailyChange:        dailyChange,
+		PreRonaPrice:       preRonaPrice,
+		Description:        desc,
+		FormattedDetail:    msg,
+	}
 
-	return msg, nil
+	return detail, nil
 }
 
 func CompanyProfile(sym string) (msg string, err error) {
