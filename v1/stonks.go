@@ -49,13 +49,6 @@ func GetDailyChange(quote finnhub.Quote) (percent float32) {
 }
 
 func Quote(symbol string, preRona bool, records [][]string, finnhubClient *finnhub.DefaultApiService, auth context.Context) (detail QuoteDetail, err error) {
-	/*
-		finnhubClient := finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
-		auth := context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
-			Key: os.Getenv("FINNHUB_API_KEY"),
-		})
-
-	*/
 	log.Printf("Looking up stock quote: %s\n", symbol)
 	quote, _, err := finnhubClient.Quote(auth, symbol)
 	if err != nil {
