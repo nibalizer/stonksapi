@@ -2,11 +2,13 @@ package stonks
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	finnhub "github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/antihax/optional"
+	"io/ioutil"
 	//	"github.com/go-chat-bot/bot"
+	"encoding/csv"
+	"errors"
 	"log"
 	"os"
 	"strings"
@@ -80,4 +82,38 @@ func CompanyProfile(sym string) (msg string, err error) {
 	fmt.Printf("%+v\n", profile2)
 
 	return "yeet", nil
+}
+
+func GetStonkDescription(records [][]string, symbol string) (string, error) {
+	upcased := strings.ToUpper(symbol)
+	fmt.Println("Searching for", upcased)
+	for _, record := range records {
+		if record[0] == upcased {
+			description := record[1]
+			return description, nil
+		}
+	}
+
+	return "", errors.New("symbol not found")
+}
+
+func GetStonksDataFromCSV(path string) ([][]string, error) {
+
+	// stonksdata.txt from:
+	// ftp://ftp.nasdaqtrader.com/SymbolDirectory/
+	// cat nasdaqlisted.txt otherlisted.txt mfundslist.txt |cut -d "|" -f 1-3 > stonksdata.txt
+	dat, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+
+	//fmt.Print(string(dat))
+	r := csv.NewReader(strings.NewReader(string(dat)))
+	r.Comma = '|'
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
 }
