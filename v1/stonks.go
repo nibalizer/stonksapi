@@ -35,7 +35,7 @@ func GetDailyChange(quote finnhub.Quote) (percent float32) {
 	return percent
 }
 
-func Quote(symbol string, preRona bool) (msg string, err error) {
+func Quote(symbol string, preRona bool, records [][]string) (msg string, err error) {
 	finnhubClient := finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
 	auth := context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
 		Key: os.Getenv("FINNHUB_API_KEY"),
@@ -57,15 +57,7 @@ func Quote(symbol string, preRona bool) (msg string, err error) {
 	if preRona {
 		preRonaPrice = GetPreRonaPrice(finnhubClient, auth, symbol)
 	}
-	stonksDataPath := os.Getenv("STONKS_DATA_PATH")
-	if stonksDataPath == "" {
-		log.Fatal("Please set STONKS_DATA_PATH")
-	}
 
-	records, err := GetStonksDataFromCSV(stonksDataPath)
-	if err != nil {
-		log.Fatal(err)
-	}
 	desc, err := GetStonkDescription(records, symbol)
 	dailyChange := GetDailyChange(quote)
 	//log.Printf("%+v\n", profile)
