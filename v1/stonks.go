@@ -46,7 +46,7 @@ func GetPreRonaPrice(finnhubClient *finnhub.DefaultApiService, auth context.Cont
 
 }
 func GetDailyChange(quote finnhub.Quote) (percent float32) {
-	percent = (quote.C - quote.Pc) / quote.Pc
+	percent = 100 * ((quote.C - quote.Pc) / quote.Pc)
 	return percent
 }
 
