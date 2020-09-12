@@ -27,6 +27,44 @@ type QuoteDetail struct {
 	FormattedDetail    string
 }
 
+type StonksClient struct {
+	Fh      *finnhub.DefaultApiService
+	Fhauth  context.Context
+	Records [][]string
+}
+
+func NewStonksClient(finnhubApiKey string, stonksDataPath string) *StonksClient {
+	finnhubClient := finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
+	finnhubAuth := context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
+		Key: finnhubApiKey,
+	})
+	records, err := GetStonksDataFromCSV(stonksDataPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	client := StonksClient{
+		Fh:      finnhubClient,
+		Fhauth:  finnhubAuth,
+		Records: records,
+	}
+	return &client
+}
+
+func (s *StonksClient) ZQuote(symbol string) (float32, error) {
+	log.Printf("Looking up stock quote: %s\n", symbol)
+	quote, _, err := s.Fh.Quote(s.Fhauth, symbol)
+	if err != nil {
+		return 0.0, err
+	}
+	if quote.Pc == 0 && quote.O == 0 {
+		msg := fmt.Sprintf("No data found for symbol %s\n", symbol)
+		//log.Printf(msg)
+		return 0, errors.New(msg)
+	}
+
+	return quote.C, nil
+}
+
 func GetPreRonaPrice(finnhubClient *finnhub.DefaultApiService, auth context.Context, symbol string) (price float32) {
 	var ronaSeconds int64
 	ronaSeconds = 1580882400 // feb 5
@@ -50,9 +88,9 @@ func GetDailyChange(quote finnhub.Quote) (percent float32) {
 	return percent
 }
 
-func Quote(symbol string, preRona bool, records [][]string, finnhubClient *finnhub.DefaultApiService, auth context.Context) (detail QuoteDetail, err error) {
+func (s *StonksClient) Quote(symbol string) (detail QuoteDetail, err error) {
 	log.Printf("Looking up stock quote: %s\n", symbol)
-	quote, _, err := finnhubClient.Quote(auth, symbol)
+	quote, _, err := s.Fh.Quote(s.Fhauth, symbol)
 	if err != nil {
 		detail = QuoteDetail{FormattedDetail: "error?"}
 		return detail, err
@@ -65,19 +103,13 @@ func Quote(symbol string, preRona bool, records [][]string, finnhubClient *finnh
 
 	log.Printf("%+v\n", quote)
 	var preRonaPrice float32
-	if preRona {
-		preRonaPrice = GetPreRonaPrice(finnhubClient, auth, symbol)
-	}
+	preRonaPrice = GetPreRonaPrice(s.Fh, s.Fhauth, symbol)
 
-	desc, err := GetStonkDescription(records, symbol)
+	desc, err := GetStonkDescription(s.Records, symbol)
 	dailyChange := GetDailyChange(quote)
 	//log.Printf("%+v\n", profile)
 	var msg string
-	if preRona {
-		msg = fmt.Sprintf("[%s] %s Price: %5.2f  // Today: %5.2f%% PreRonaPrice: %5.2f", symbol, desc, quote.C, dailyChange, preRonaPrice)
-	} else {
-		msg = fmt.Sprintf("[%s] Price: %5.2f  // Today: %5.2f%%", symbol, quote.C, dailyChange)
-	}
+	msg = fmt.Sprintf("[%s] %s Price: %5.2f  // Today: %5.2f%% PreRonaPrice: %5.2f", symbol, desc, quote.C, dailyChange, preRonaPrice)
 	log.Printf("%+v\n", msg)
 	detail = QuoteDetail{
 		Symbol:             symbol,
