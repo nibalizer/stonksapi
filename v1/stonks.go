@@ -6,7 +6,6 @@ import (
 	finnhub "github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/antihax/optional"
 	"io/ioutil"
-	//	"github.com/go-chat-bot/bot"
 	"encoding/csv"
 	"errors"
 	"log"
