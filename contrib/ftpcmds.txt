@@ -1,0 +1,7 @@
+open ftp.nasdaqtrader.com
+user anonymous stonksbotv1@example.com
+cd SymbolDirectory
+get nasdaqlisted.txt
+get otherlisted.txt
+get mfundslist.txt
+bye
