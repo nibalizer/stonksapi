@@ -23,6 +23,3 @@ lftp -v -f ftpcmds.txt
 cat nasdaqlisted.txt otherlisted.txt mfundslist.txt |cut -d "|" -f 1-3 > stonksdata.txt
 
 echo "Created db: stonksdata.txt"
-
-
-

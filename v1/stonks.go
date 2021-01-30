@@ -108,7 +108,7 @@ func (s *StonksClient) Quote(symbol string) (detail QuoteDetail, err error) {
 	dailyChange := GetDailyChange(quote)
 	//log.Printf("%+v\n", profile)
 	var msg string
-	msg = fmt.Sprintf("[%s] %s Price: %5.2f  // Today: %5.2f%% PreRonaPrice: %5.2f", symbol, desc, quote.C, dailyChange, preRonaPrice)
+	msg = fmt.Sprintf("[%s] %s \n Price: %5.2f \n Today: %5.2f%% PreRonaPrice: %5.2f", symbol, desc, quote.C, dailyChange, preRonaPrice)
 	log.Printf("%+v\n", msg)
 	detail = QuoteDetail{
 		Symbol:             symbol,
