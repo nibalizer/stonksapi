@@ -2,15 +2,18 @@ package stonks
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
+	"errors"
 	"fmt"
 	finnhub "github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/antihax/optional"
 	"io/ioutil"
-	"encoding/csv"
-	"errors"
 	"log"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 type QuoteDetail struct {
@@ -27,9 +30,20 @@ type QuoteDetail struct {
 }
 
 type StonksClient struct {
-	Fh      *finnhub.DefaultApiService
-	Fhauth  context.Context
-	Records [][]string
+	Fh            *finnhub.DefaultApiService
+	finnhubApiKey string
+	Fhauth        context.Context
+	Records       [][]string
+}
+
+// json for short interest api
+
+type ShortInterestResponse struct {
+	Data []struct {
+		Date          string `json:"date"`
+		ShortInterest int    `json:"shortInterest"`
+	} `json:"data"`
+	Symbol string `json:"symbol"`
 }
 
 func NewStonksClient(finnhubApiKey string, stonksDataPath string) *StonksClient {
@@ -42,9 +56,10 @@ func NewStonksClient(finnhubApiKey string, stonksDataPath string) *StonksClient 
 		log.Fatal(err)
 	}
 	client := StonksClient{
-		Fh:      finnhubClient,
-		Fhauth:  finnhubAuth,
-		Records: records,
+		Fh:            finnhubClient,
+		Fhauth:        finnhubAuth,
+		finnhubApiKey: finnhubApiKey,
+		Records:       records,
 	}
 	return &client
 }
@@ -57,7 +72,6 @@ func (s *StonksClient) ZQuote(symbol string) (float32, error) {
 	}
 	if quote.Pc == 0 && quote.O == 0 {
 		msg := fmt.Sprintf("No data found for symbol %s\n", symbol)
-		//log.Printf(msg)
 		return 0, errors.New(msg)
 	}
 
@@ -172,4 +186,42 @@ func GetStonksDataFromCSV(path string) ([][]string, error) {
 		return nil, err
 	}
 	return records, nil
+}
+
+func (s *StonksClient) GetShortInterestBeta(symbol string) (*ShortInterestResponse, error) {
+
+	//var result map[string]interface{}
+	parsed := ShortInterestResponse{}
+	dt := time.Now()
+	previousDate := time.Date(dt.Year()-1, dt.Month(), dt.Day(), 0, 0, 0, 0, time.UTC)
+	prevDateStr := previousDate.Format("2006-01-02")
+	todayDateStr := dt.Format("2006-01-02")
+
+	client := http.Client{}
+	urlRoot := "https://finnhub.io/api/v1/"
+	path := fmt.Sprintf("stock/short-interest?symbol=%s&from=%s&to=%s&token=%s", symbol, prevDateStr, todayDateStr, s.finnhubApiKey)
+
+	fmt.Println(path)
+	request, err := http.NewRequest("GET", urlRoot+path, nil)
+	if err != nil {
+		return &parsed, err
+	}
+
+	resp, err := client.Do(request)
+	if err != nil {
+		return &parsed, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = json.Unmarshal(body, &parsed)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &parsed, nil
+
 }
