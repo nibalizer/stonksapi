@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -140,18 +139,15 @@ func (s *StonksClient) Quote(symbol string) (detail QuoteDetail, err error) {
 	return detail, nil
 }
 
-func CompanyProfile(sym string) (msg string, err error) {
+func (s *StonksClient) CompanyProfile2(sym string) (profile finnhub.CompanyProfile2, err error) {
 	// Company profile2
 	symbol := strings.ToUpper(sym)
-	finnhubClient := finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
-	auth := context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
-		Key: os.Getenv("FINNHUB_API_KEY"),
-	})
 
-	profile2, _, err := finnhubClient.CompanyProfile2(auth, &finnhub.CompanyProfile2Opts{Symbol: optional.NewString(symbol)})
-	fmt.Printf("%+v\n", profile2)
-
-	return "yeet", nil
+	profile2, _, err := s.Fh.CompanyProfile2(s.Fhauth, &finnhub.CompanyProfile2Opts{Symbol: optional.NewString(symbol)})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return profile2, nil
 }
 
 func GetStonkDescription(records [][]string, symbol string) (string, error) {
