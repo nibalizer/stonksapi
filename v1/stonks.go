@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -33,6 +35,7 @@ type StonksClient struct {
 	finnhubApiKey string
 	Fhauth        context.Context
 	Records       [][]string
+	DataPath      string
 }
 
 // json for short interest api
@@ -59,8 +62,31 @@ func NewStonksClient(finnhubApiKey string, stonksDataPath string) *StonksClient 
 		Fhauth:        finnhubAuth,
 		finnhubApiKey: finnhubApiKey,
 		Records:       records,
+		DataPath:      stonksDataPath,
 	}
 	return &client
+}
+
+func (s *StonksClient) ReloadDescriptions() error {
+	records, err := GetStonksDataFromCSV(s.DataPath)
+	if err != nil {
+		log.Printf("Unable to reload descriptions %s\n", err)
+		return err
+	} else {
+		s.Records = records
+		return nil
+	}
+
+}
+
+func (s *StonksClient) PullNewDescriptions() error {
+	cmd := "/get_stonks_db.sh"
+	if err := exec.Command(cmd).Run(); err != nil {
+		log.Printf("Error pulling new descriptions\n")
+		log.Println(os.Stderr, err)
+		return err
+	}
+	return nil
 }
 
 func (s *StonksClient) ZQuote(symbol string) (float32, error) {
@@ -145,7 +171,7 @@ func (s *StonksClient) CompanyProfile2(sym string) (profile finnhub.CompanyProfi
 
 	profile2, _, err := s.Fh.CompanyProfile2(s.Fhauth, &finnhub.CompanyProfile2Opts{Symbol: optional.NewString(symbol)})
 	if err != nil {
-		log.Fatal(err)
+		return finnhub.CompanyProfile2{}, err
 	}
 	return profile2, nil
 }
