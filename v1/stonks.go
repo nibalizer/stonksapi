@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -163,6 +165,63 @@ func (s *StonksClient) Quote(symbol string) (detail QuoteDetail, err error) {
 	}
 
 	return detail, nil
+}
+
+func (s *StonksClient) GetPriceAt(symbol string, tdelta string) (price float32, date time.Time, err error) {
+	fmt.Println("Processing timedelta input", tdelta)
+	r := regexp.MustCompile(`^\d*[mhdyw]$`)
+	match := r.MatchString(tdelta)
+	// test cases
+	//fmt.Println(r.MatchString("5m"))
+	//fmt.Println(r.MatchString("1m"))
+	//fmt.Println(r.MatchString("10h"))
+	//fmt.Println(r.MatchString("10d"))
+	if !match {
+		fmt.Println("error!")
+		return price, time.Now(), errors.New("timedelta input validation failed")
+	}
+
+	var seconds int
+	seconds = 0
+	units := tdelta[len(tdelta)-1:]
+	switch units {
+	case "h":
+		fmt.Println("Hours")
+		seconds = 3600
+	case "d":
+		fmt.Println("Days")
+		seconds = 3600 * 24
+	case "w":
+		fmt.Println("Weeks")
+		seconds = 3600 * 24 * 7
+	case "m":
+		fmt.Println("Months")
+		seconds = 3600 * 24 * 30
+	case "y":
+		fmt.Println("Years")
+		seconds = 3600 * 24 * 365
+	default:
+		fmt.Println("How did you get here")
+	}
+	interval, _ := strconv.Atoi(tdelta[:len(tdelta)-1])
+	fmt.Println("Taking time slice from ", units, "(", seconds, ")", "x ", interval)
+	nowTime := time.Now().Unix()
+	since := nowTime - int64(seconds*interval)
+	sincePlusOne := since + (3600 * 24)
+
+	stockCandles, _, err := s.Fh.StockCandles(s.Fhauth, symbol, "D", since, sincePlusOne, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(stockCandles.C) == 0 {
+		log.Printf("%s is newer than time specified, no PreRonaPrice calculated\n", symbol)
+		return 0.0, time.Now(), fmt.Errorf("%s is newer than time specified, no PreRonaPrice calculated\n", symbol)
+
+	}
+	price = (stockCandles.H[0] + stockCandles.L[0]) / 2
+	datetime := stockCandles.T[0]
+
+	return price, time.Unix(datetime, 0), nil
 }
 
 func (s *StonksClient) CompanyProfile2(sym string) (profile finnhub.CompanyProfile2, err error) {
